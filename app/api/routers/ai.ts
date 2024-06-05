@@ -6,14 +6,15 @@ import { LLMResult } from "@langchain/core/outputs";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import wretch from "wretch";
 import QueryStringAddon from "wretch/addons/queryString";
-import { AIMessageChunk } from "@langchain/core/messages";
+import { nanoid } from "nanoid";
+import { is } from "rambda";
 
 import { publicProcedure } from "../trpc";
 
 import { sendPromptToJsonModel } from "@/utils/ai";
 import { ETHERSCAN_API_DATA } from "@/ai/data/etherscan";
-import { TOP_ETH_TOKENS } from "@/ai/data/eth-tokens";
 import { EtherscanAPISchema, getEtherscanData } from "@/ai/etherscan";
+import { coinLookup } from "@/ai/coin-lookup";
 
 const handleLLMEnd = (output: LLMResult) => {
   console.log(
@@ -35,11 +36,28 @@ const EtherscanFunctionSchema = z.object({
   reason: z
     .string()
     .describe(
-      "Provide the user a bit of information as to why you're making this request. Start " +
-        "the message with 'Calling Etherscan to ...'",
+      "This should be a description of the below data. Make sure to capitalize the first letter.",
     ),
   api: EtherscanAPISchema,
 });
+
+const ResultFunctionSchema = z.object({
+  result: z
+    .string()
+    .describe(
+      "Provide the response here. If the query is unsolvable, then you should call this too - " +
+        "explaining that you can't yet answer these types of questions.",
+    ),
+});
+
+const CoinLookupFunctionSchema = z.object({
+  names: z.array(z.string().describe("The tokens' name")),
+});
+
+// Here are the contract addresses of the top Ethereum tokens:
+// ${Object.entries(TOP_ETH_TOKENS)
+//   .map(([name, address]) => `${name}: ${address}`)
+//     .join("\n")}
 
 export const w = wretch().addon(QueryStringAddon);
 
@@ -69,11 +87,6 @@ const queryEtherscan = async (
       primarily on calling the etherscan API.
       
       ${data ? `Here is some of the necessary data needed for this analysis: {data}` : ""}
-  
-      Here are the contract addresses of the top Ethereum tokens:
-      ${Object.entries(TOP_ETH_TOKENS)
-        .map(([name, address]) => `${name}: ${address}`)
-        .join("\n")}
 
       Here is some info on the etherscan API: 
       ${ETHERSCAN_API_DATA}
@@ -90,12 +103,19 @@ const queryEtherscan = async (
           "Used for querying Etherscan for information about a contract, token, or transaction.",
         parameters: zodToJsonSchema(EtherscanFunctionSchema),
       },
-      // {
-      //   name: "result",
-      //   description:
-      //     "Used for querying Etherscan for information about a contract, token, or transaction.",
-      //   parameters: zodToJsonSchema(EtherscanFunctionSchema),
-      // },
+      {
+        name: "coin-lookup",
+        description:
+          "Call this function when you want to find the address of a token by its name.",
+        parameters: zodToJsonSchema(CoinLookupFunctionSchema),
+      },
+      {
+        name: "result",
+        description:
+          "Call this function when you have all the information you need to answer the question." +
+          "I.e., you don't need to call etherscan anymore. If the query is unsolvable, then you should call this too.",
+        parameters: zodToJsonSchema(ResultFunctionSchema),
+      },
     ],
   });
 
@@ -107,45 +127,117 @@ const recursiveLLMcall = async (
     role: "user" | "assistant";
     message: string;
   }>,
-  tableQueryResults: Array<string> = [],
-  recursionsRemaining = 3, // Avoid allowing the LLM to excessively recurse on itself
+  tableQueryResults: Array<{
+    reason: string;
+    data: string;
+  }> = [],
+  _newTables: Array<{
+    reason: string;
+    data: string;
+  }> = [],
+  recursionsRemaining = 5, // Avoid allowing the LLM to excessively recurse on itself
 ): Promise<{
-  result: AIMessageChunk;
-  tableQueryResults: Array<string>;
+  result: string;
+  tableQueryResults: Array<{
+    reason: string;
+    data: string;
+  }>;
 }> => {
   if (recursionsRemaining === 0) {
     throw new Error("Maximum recursion depth reached");
   }
 
-  const result = await queryEtherscan(prompts, tableQueryResults.join("\n"));
-  const isEtherscanQueried =
-    result.additional_kwargs.function_call?.name === "etherscan";
-  let tableData = [...tableQueryResults];
+  let newTables = [..._newTables];
+  const result = await queryEtherscan(
+    prompts,
+    [...tableQueryResults, ...newTables].map((t) => t.data).join("\n"),
+  );
+  const functionCalled = result.additional_kwargs.function_call?.name;
+  const isEtherscanQueried = functionCalled === "etherscan";
+  const isResultFunctionCalled = functionCalled === "result";
 
-  if (isEtherscanQueried) {
-    // @TODO, this could be improved to handle cases where LLM returns invalid JSON
-    debugger;
-    const query = EtherscanFunctionSchema.parse(
-      JSON.parse(result.additional_kwargs.function_call?.arguments ?? "{}"),
-    );
+  switch (functionCalled) {
+    case "coin-lookup": {
+      const query = CoinLookupFunctionSchema.parse(
+        JSON.parse(result.additional_kwargs.function_call?.arguments ?? "{}"),
+      );
+      const data = query.names.map((c) => ({
+        name: c,
+        address: coinLookup(c),
+        key: nanoid(),
+      }));
 
-    // Call the etherscan API
-    const etherscanData = await getEtherscanData(query.api);
-    // @TODO, handle errors from the etherscan API
+      newTables.push({
+        reason: "Coin Lookup",
+        data: JSON.stringify(data),
+      });
 
-    console.log(etherscanData);
-    tableData.push(JSON.stringify(etherscanData));
+      return recursiveLLMcall(
+        prompts,
+        tableQueryResults,
+        newTables,
+        recursionsRemaining - 1,
+      );
+    }
 
-    if (query.requiresFollowUpAnalysis) {
-      return recursiveLLMcall(prompts, tableData, recursionsRemaining - 1);
+    case "etherscan": {
+      console.log("Etherscan query found");
+      // @TODO, this could be improved to handle cases where LLM returns invalid JSON
+      const query = EtherscanFunctionSchema.parse(
+        JSON.parse(result.additional_kwargs.function_call?.arguments ?? "{}"),
+      );
+
+      console.log("Query parsed", query);
+
+      // Call the etherscan API
+      const _etherscanData = (await getEtherscanData(query.api)) as {
+        result: unknown;
+      };
+      // @TODO, handle errors from the etherscan API
+
+      // Key the data here (req. for nextui table)
+      const etherscanData = Array.isArray(_etherscanData.result)
+        ? _etherscanData.result.map((d) => ({ ...d, key: nanoid() }))
+        : [
+            {
+              ...(is(Object, _etherscanData.result)
+                ? _etherscanData.result
+                : { value: _etherscanData.result }),
+              key: nanoid(),
+            },
+          ];
+
+      newTables.push({
+        reason: query.reason,
+        data: JSON.stringify(etherscanData),
+      });
+
+      if (query.requiresFollowUpAnalysis) {
+        console.log("Requires follow up analysis");
+
+        return recursiveLLMcall(
+          prompts,
+          tableQueryResults,
+          newTables,
+          recursionsRemaining - 1,
+        );
+      }
     }
   }
 
-  // @TODO, check for a result function call
+  if (isResultFunctionCalled) {
+    console.log("Result function called");
+  }
+
+  const resultFn = isResultFunctionCalled
+    ? ResultFunctionSchema.parse(
+        JSON.parse(result.additional_kwargs.function_call?.arguments ?? "{}"),
+      )
+    : { result: "" };
 
   return {
-    tableQueryResults,
-    result,
+    tableQueryResults: newTables,
+    result: resultFn.result,
   };
 };
 
@@ -159,7 +251,24 @@ export const aiRouter = {
             message: z.string(),
           }),
         ),
-        tables: z.array(z.string()), // NOTE: table data is too variable to not be stringified
+        tables: z.array(
+          z.object({
+            reason: z.string(),
+            data: z.string(),
+          }),
+        ), // NOTE: table data is too variable to not be stringified
+      }),
+    )
+    .output(
+      z.object({
+        status: z.enum(["success", "error"]),
+        message: z.string(),
+        tables: z.array(
+          z.object({
+            reason: z.string(),
+            data: z.string(),
+          }),
+        ),
       }),
     )
     .mutation(async ({ input }) => {
@@ -167,9 +276,9 @@ export const aiRouter = {
         const result = await recursiveLLMcall(input.messages, input.tables);
 
         return {
-          message: "Something went wrong while trying to generate a response",
+          message: result.result,
           status: "success",
-          tables: [],
+          tables: result.tableQueryResults,
         };
       } catch (e) {
         console.log(e);

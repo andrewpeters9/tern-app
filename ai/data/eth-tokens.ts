@@ -20,7 +20,6 @@ export const TOP_ETH_TOKENS: Record<string, `0x${string}`> = {
     Gate: '0xe66747a101bff2dba3697199dcce5b743b454759',
     Immutable: '0xf57e7e7c23978c3caec3c3548e3d615c346e79ff',
     Injective: '0xe28b3b32b6c345a34ff64674606124dd5aceca30',
-    JasmyCoin: '0x7420b4b9a0110cdc71fb720908340c03f9bc03ec',
     'Kelp DAO Restaked ETH': '0xa1290d69c65a6fe4df752f95823fae25cb99e5a7',
     'LEO Token': '0x2af5d2ad76741191d15dfe7bf6ac92d4bd912ca3',
     'Lido DAO': '0x5a98fcbea516cf06857215779fd812ca3bef1b32',

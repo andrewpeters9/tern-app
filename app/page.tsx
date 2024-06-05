@@ -53,7 +53,7 @@ export default function Page() {
   const { mutate: sendPrompt, isPending } = trpc.ai.prompt.useMutation({
     onMutate: (result) => {
       // Optimistically add the user's query to the conversation
-      chatHistory$.get().messages.push({
+      chatHistory$.messages.push({
         role: "user",
         message: query,
         status: "success",
@@ -61,18 +61,18 @@ export default function Page() {
       setQuery("");
     },
     onError: () => {
-      chatHistory$.get().messages.push({
+      chatHistory$.messages.push({
         role: "assistant",
         message: "Something went wrong while trying to generate a response",
         status: "error",
       });
     },
     onSuccess: (result) => {
-      chatHistory$.get().messages.push({
+      chatHistory$.messages.push({
         role: "assistant",
-        tables: result.tableQueryResults,
-        message: "@TODO",
-        status: "success",
+        tables: result.tables,
+        message: result.message,
+        status: result.status,
       });
     },
   });
@@ -146,9 +146,7 @@ export default function Page() {
             if (query.length > 0) {
               sendPrompt({
                 messages: messages.filter((m) => m.status === "success"),
-                tables: messages
-                  .flatMap((m) => m.tables)
-                  .filter((a) => a) as Array<string>,
+                tables: messages.flatMap((m) => m.tables ?? []),
               });
             }
           }}

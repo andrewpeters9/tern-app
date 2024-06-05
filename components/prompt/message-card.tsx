@@ -1,11 +1,13 @@
 "use client";
 
 import React from "react";
-import { Avatar, Badge, Button, Link } from "@nextui-org/react";
+import { Avatar, Badge, Button, Link, ScrollShadow } from "@nextui-org/react";
 import { useClipboard } from "@nextui-org/use-clipboard";
 import { Icon } from "@iconify/react";
+import { nanoid } from "nanoid";
 
 import { cn } from "@/utils/core";
+import { BlockchainTable } from "@/app/table";
 
 export type MessageCardProps = React.HTMLAttributes<HTMLDivElement> & {
   avatar?: string;
@@ -15,6 +17,10 @@ export type MessageCardProps = React.HTMLAttributes<HTMLDivElement> & {
   status?: "success" | "error";
   attempts?: number;
   messageClassName?: string;
+  tables?: Array<{
+    reason: string;
+    data: string;
+  }>;
   onAttemptChange?: (attempt: number) => void;
   onMessageCopy?: (content: string | string[]) => void;
   onFeedback?: (feedback: "like" | "dislike") => void;
@@ -36,6 +42,7 @@ const MessageCard = React.forwardRef<HTMLDivElement, MessageCardProps>(
       onAttemptFeedback,
       className,
       messageClassName,
+      tables = [],
       ...props
     },
     ref,
@@ -119,7 +126,7 @@ const MessageCard = React.forwardRef<HTMLDivElement, MessageCardProps>(
             <Avatar src={avatar} />
           </Badge>
         </div>
-        <div className="flex w-full flex-col gap-4">
+        <div className="flex w-full flex-col gap-4 min-w-0">
           <div
             className={cn(
               "relative w-full rounded-medium bg-content2 px-4 py-3 text-default-600",
@@ -127,8 +134,24 @@ const MessageCard = React.forwardRef<HTMLDivElement, MessageCardProps>(
               messageClassName,
             )}
           >
-            <div ref={messageRef} className={"pr-20 text-small"}>
-              {hasFailed ? errorMessage : message}
+            <div ref={messageRef} className={"text-small"}>
+              {tables.map((t) => {
+                const parsed = JSON.parse(t.data);
+
+                return (
+                  <div key={nanoid()}>
+                    <p className="text-sm mb-2 font-semibold">{t.reason}</p>
+                    <ScrollShadow
+                      hideScrollBar
+                      className="flex flex-nowrap gap-2"
+                      orientation="horizontal"
+                    >
+                      <BlockchainTable data={parsed} />
+                    </ScrollShadow>
+                  </div>
+                );
+              })}
+              <div>{hasFailed ? errorMessage : message}</div>
             </div>
             {showFeedback && !hasFailed && (
               <div className="absolute right-2 top-2 flex rounded-full bg-content2 shadow-small">

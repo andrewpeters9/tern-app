@@ -9,46 +9,24 @@ import {
   TableRow,
 } from "@nextui-org/table";
 import React from "react";
+import { nanoid } from "nanoid";
 
 const PAGE_SIZE = 10;
-const rows = [
-  {
-    key: "1",
-    name: "Tony Reichert",
-    role: "CEO",
-    status: "Active",
-  },
-  {
-    key: "2",
-    name: "Zoey Lang",
-    role: "Technical Lead",
-    status: "Paused",
-  },
-  {
-    key: "3",
-    name: "Jane Fisher",
-    role: "Senior Developer",
-    status: "Active",
-  },
-  {
-    key: "4",
-    name: "William Howard",
-    role: "Community Manager",
-    status: "Vacation",
-  },
-];
 
-const columns = Object.keys(rows[0])
-  .filter((k) => k === "key")
-  .map((key) => ({
-    key,
-    label: key.toUpperCase(),
-  }));
+export const BlockchainTable = ({
+  data,
+}: {
+  data: Array<Record<string, unknown>>;
+}) => {
+  const columns = Object.keys(data[0] ?? {})
+    .filter((k) => k !== "key")
+    .map((key) => ({
+      key,
+      label: key.toUpperCase(),
+    }));
 
-export const BlockchainTable = () => {
   return (
     <section>
-      <header>Displaying latest {}</header>
       <Table aria-label="Example static collection table">
         <TableHeader columns={columns}>
           {(column) => (
@@ -57,9 +35,9 @@ export const BlockchainTable = () => {
             </TableColumn>
           )}
         </TableHeader>
-        <TableBody items={rows} loadingContent={<Spinner label="Loading..." />}>
+        <TableBody items={data} loadingContent={<Spinner label="Loading..." />}>
           {(item) => (
-            <TableRow key={item.key}>
+            <TableRow key={nanoid()}>
               {(columnKey) => (
                 <TableCell>{getKeyValue(item, columnKey)}</TableCell>
               )}

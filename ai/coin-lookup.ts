@@ -1,4 +1,4 @@
-import { COIN_DATA } from "@/ai/data/coin-data";
+import { TOP_ETH_TOKENS } from "@/ai/data/eth-tokens";
 
 const removePunctuation = (str: string) => {
   return str.replaceAll(/[^\s\w]|_/g, "");
@@ -37,24 +37,17 @@ export const coinLookup = (query: string): `0x${string}` => {
   let currentQuery = query;
 
   for (const formatter of formatters) {
-    const match = COIN_DATA.find((data) => {
-      if (data.includes(currentQuery)) {
-        return true;
+    for (const lookupFormatter of formatters) {
+      const obj = Object.fromEntries(
+        Object.entries(TOP_ETH_TOKENS).map(([key, value]) => [
+          lookupFormatter(key),
+          value,
+        ]),
+      );
+
+      if (currentQuery in obj) {
+        return obj[currentQuery];
       }
-
-      const [id] = data;
-
-      // Ids are kebab-case, e.g. USDC's id is "usd-coin"
-      if (currentQuery.replaceAll("-", " ") === id) {
-        return true;
-      }
-
-      return false;
-    });
-
-    if (match) {
-      // return match.at(-1); // ts error
-      return match[3];
     }
 
     currentQuery = formatter(currentQuery);
