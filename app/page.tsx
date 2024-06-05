@@ -107,9 +107,9 @@ export default function Page() {
         </div>
       </section>
 
-      <ScrollShadow className={cn("flex h-full flex-col")}>
+      <div className={cn("flex h-full flex-col")}>
         <Conversation />
-      </ScrollShadow>
+      </div>
       <div className="flex flex-col gap-2 max-w-2xl mx-auto">
         <ScrollShadow
           hideScrollBar
@@ -145,7 +145,13 @@ export default function Page() {
 
             if (query.length > 0) {
               sendPrompt({
-                messages: messages.filter((m) => m.status === "success"),
+                messages: [
+                  ...messages.filter((m) => m.status === "success"),
+                  {
+                    role: "user",
+                    message: query,
+                  },
+                ],
                 tables: messages.flatMap((m) => m.tables ?? []),
               });
             }

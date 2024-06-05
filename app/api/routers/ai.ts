@@ -212,16 +212,16 @@ const recursiveLLMcall = async (
         data: JSON.stringify(etherscanData),
       });
 
-      if (query.requiresFollowUpAnalysis) {
-        console.log("Requires follow up analysis");
-
-        return recursiveLLMcall(
-          prompts,
-          tableQueryResults,
-          newTables,
-          recursionsRemaining - 1,
-        );
-      }
+      // if (query.requiresFollowUpAnalysis) {
+      //   console.log("Requires follow up analysis");
+      //
+      //   return recursiveLLMcall(
+      //     prompts,
+      //     tableQueryResults,
+      //     newTables,
+      //     recursionsRemaining - 1,
+      //   );
+      // }
     }
   }
 
