@@ -1,6 +1,6 @@
 import wretch from 'wretch';
 import QueryStringAddon from "wretch/addons/queryString";
-import {COIN_DATA} from "@/ai/data/coin-data";
+// import {COIN_DATA} from "@/ai/data/coin-data";
 import {COIN_DATA_BY_MCAP} from "@/ai/data/coin-data-by-mcap";
 
 // const getTokenAddress = async (tokenId: string) => {
