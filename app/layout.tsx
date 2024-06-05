@@ -1,12 +1,13 @@
 import "@/styles/globals.css";
-import {Metadata, Viewport} from "next";
+import { Toaster } from "react-hot-toast";
+import { Metadata, Viewport } from "next";
 import clsx from "clsx";
 
-import {Providers} from "./providers";
+import { Providers } from "./providers";
 
-import {siteConfig} from "@/config/site";
-import {fontSans} from "@/config/fonts";
-import {Navbar} from "@/components/navbar";
+import { siteConfig } from "@/config/site";
+import { fontSans } from "@/config/fonts";
+import { Navbar } from "@/components/navbar";
 
 export const metadata: Metadata = {
   title: {
@@ -32,7 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html suppressHydrationWarning lang="en" className="dark">
+    <html suppressHydrationWarning lang="en">
       <head />
       <body
         className={clsx(
@@ -48,6 +49,7 @@ export default function RootLayout({
             </main>
           </div>
         </Providers>
+        <Toaster />
       </body>
     </html>
   );
