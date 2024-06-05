@@ -1,7 +1,6 @@
 import wretch from 'wretch';
 import QueryStringAddon from "wretch/addons/queryString";
 // import {COIN_DATA} from "@/ai/data/coin-data";
-import {COIN_DATA_BY_MCAP} from "@/ai/data/coin-data-by-mcap";
 
 // const getTokenAddress = async (tokenId: string) => {
 //     const url = `https://api.coingecko.com/api/v3/coins/${tokenId}`;
@@ -39,12 +38,12 @@ export const w = wretch().addon(QueryStringAddon);
 // getTop20Cryptos().then(console.log).catch(console.error);
 
 
-const getTop500ethTokens = async () => {
-    const top500ids = COIN_DATA_BY_MCAP.map(c => c.id);
-    const top500byPlatform = COIN_DATA.filter(([id]) => top500ids.includes(id));
-
-    console.log(Object.fromEntries(top500byPlatform.map(([id, ticker, name, contractAddress]) => [name, contractAddress])));
-}
-
-getTop500ethTokens().then(console.log).catch(console.error);
-
+// const getTop500ethTokens = async () => {
+//     const top500ids = COIN_DATA_BY_MCAP.map(c => c.id);
+//     const top500byPlatform = COIN_DATA.filter(([id]) => top500ids.includes(id));
+//
+//     console.log(Object.fromEntries(top500byPlatform.map(([id, ticker, name, contractAddress]) => [name, contractAddress])));
+// }
+//
+// getTop500ethTokens().then(console.log).catch(console.error);
+//
