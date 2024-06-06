@@ -35,11 +35,12 @@ configureObservableSync({
 const ideas = [
   {
     label: "Balance Query",
-    title: "How much ETH does 0x1f2..7d2 have?",
+    title: "How much ETH does 0x1db3439a222c519ab44bb1144fc28167b4fa6ee6 have?",
   },
   {
     label: "Transaction History",
-    title: "What were the previous transactions of 0x1f2..7d2?",
+    title:
+      "What were the previous transactions of 0x1db3439a222c519ab44bb1144fc28167b4fa6ee6?",
   },
   {
     label: "Trading Volume",
